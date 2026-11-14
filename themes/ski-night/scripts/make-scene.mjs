@@ -71,6 +71,7 @@ const surfaceY = x => {
   return ridge[ridge.length - 1][1]
 }
 const mountainD = `${poly(ridge)}L1700 1000L-60 1000Z`
+const belowRidgeD = `${poly(ridge.map(([x, y]) => [x, y + 9]))}L1700 1000L-60 1000Z`
 
 // the forest: treetops along the skyline, canopy texture below
 const jag = []
@@ -151,7 +152,7 @@ for (const run of runs) {
   run.c = catmull(run.pts)
   run.n = normals(run.c)
   const ph = r(0, 6), ph2 = r(0, 6)
-  run.w = t => lerp(run.w0, run.w1, Math.pow(t, 0.85)) * (run.track ? 1 : 1 + 0.18 * Math.sin(t * 7 + ph) + 0.08 * Math.sin(t * 17 + ph2))
+  run.w = t => lerp(run.w0, run.w1, Math.pow(t, 0.85)) * (run.track ? 1 : (1 + 0.18 * Math.sin(t * 7 + ph) + 0.08 * Math.sin(t * 17 + ph2)) * (0.62 + 0.38 * Math.min(1, t / 0.1)))
   // tree-lined edges wander; each side on its own
   const edge = (i, k) => run.track ? 1 : 1 + 0.1 * Math.sin(i * 0.8 + ph * k) + 0.06 * Math.sin(i * 2.1 + k) + r(-0.05, 0.05)
   const L = run.c.map((p, i) => { const w = run.w(i / (run.c.length - 1)) * 0.5 * edge(i, 1); return [p[0] + run.n[i][0] * w, p[1] + run.n[i][1] * w] })
@@ -463,6 +464,7 @@ for (let i = 0; i < 50; i++) {
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
 <defs>
+<clipPath id="below"><path d="${belowRidgeD}"/></clipPath>
 ${forestTiles}
 <linearGradient id="moonside" gradientUnits="userSpaceOnUse" x1="200" y1="0" x2="1500" y2="0"><stop offset="0" stop-color="#9fb4dc" stop-opacity="0"/><stop offset="1" stop-color="#9fb4dc" stop-opacity=".09"/></linearGradient>
 <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050913"/><stop offset=".5" stop-color="#0b1427"/><stop offset="1" stop-color="#1a2a48"/></linearGradient>
@@ -502,10 +504,13 @@ ${skierCss}
 <g class="land">
 <path d="${farD}" fill="url(#far)"/>
 <path d="${mountainD}" fill="#0c1424"/>
-<path d="${forestD}" fill="url(#trees1)"/><path d="${forestD}" fill="url(#trees2)"/><path d="${forestD}" fill="url(#moonside)"/><path d="${skylineD}" fill="#0f192c"/>
+<path d="${forestD}" fill="url(#trees1)"/><path d="${forestD}" fill="url(#trees2)"/><path d="${forestD}" fill="url(#moonside)"/>
+<g clip-path="url(#below)">
 <path d="${apronD}" fill="url(#piste)"/>
 <g fill="url(#piste)">${runFill}</g>
 <g fill="url(#piste)" opacity=".55">${gladeFill}</g><g fill="url(#piste)" opacity=".6">${trackFill}</g>
+</g>
+<path d="${skylineD}" fill="#0f192c"/>
 <path d="${mountainD}" fill="url(#shade)"/>
 <ellipse cx="800" cy="900" rx="360" ry="40" fill="url(#pool)" opacity=".6"/>
 <g fill="url(#pool)">${pools}</g>
