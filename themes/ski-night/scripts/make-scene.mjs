@@ -92,18 +92,20 @@ const farD = poly(far) + 'Z'
 
 // ---------- runs (groomers)
 const runs = [
-  { name: 'A', lit: true, pts: [[888, 338], [830, 372], [800, 420], [832, 470], [778, 548], [826, 630], [764, 720], [810, 800], [770, 870], [760, 918]], w0: 12, w1: 44 },
-  { name: 'B', lit: false, pts: [[912, 338], [960, 400], [1040, 470], [1010, 560], [1100, 650], [1060, 740], [1130, 830], [1100, 880], [1050, 918]], w0: 12, w1: 40 },
-  { name: 'C', lit: true, pts: [[482, 528], [440, 600], [492, 670], [418, 750], [470, 830], [500, 880], [520, 918]], w0: 12, w1: 38 },
-  { name: 'T1', lit: false, pts: [[882, 336], [800, 368], [700, 410], [610, 460], [530, 505], [486, 526]], w0: 8, w1: 9, track: true },
+  { name: 'A', lit: true, pts: [[896, 340], [852, 386], [812, 446], [786, 520], [764, 600], [738, 690], [716, 780], [700, 860], [690, 920]], w0: 16, w1: 46 },
+  { name: 'B', lit: false, pts: [[906, 342], [958, 400], [1006, 470], [1040, 550], [1066, 640], [1078, 730], [1074, 820], [1056, 920]], w0: 16, w1: 42 },
+  { name: 'C', lit: true, pts: [[480, 528], [458, 600], [452, 680], [470, 760], [498, 840], [516, 920]], w0: 14, w1: 40 },
+  { name: 'T1', lit: false, pts: [[890, 338], [790, 380], [680, 430], [580, 480], [490, 524]], w0: 8, w1: 9, track: true },
 ]
 let runFill = '', cord = '', pools = '', lamps = ''
 for (const run of runs) {
   run.c = catmull(run.pts)
   run.n = normals(run.c)
-  run.w = t => lerp(run.w0, run.w1, t)
-  const L = offsetLine(run.c, run.n, run.w, 0.5)
-  const R = offsetLine(run.c, run.n, run.w, -0.5)
+  const ph = r(0, 6)
+  run.w = t => lerp(run.w0, run.w1, t) * (1 + Math.sin(t * 9 + ph) * 0.1) + (run.track ? 0 : 16 * Math.exp(-t * 14))
+  const edge = (i, k) => 1 + Math.sin(i * 0.9 + ph * k * 3) * 0.05 + Math.sin(i * 2.3 + k) * 0.03
+  const L = run.c.map((p, i) => { const w = run.w(i / (run.c.length - 1)) * 0.5 * edge(i, 1); return [p[0] + run.n[i][0] * w, p[1] + run.n[i][1] * w] })
+  const R = run.c.map((p, i) => { const w = run.w(i / (run.c.length - 1)) * 0.5 * edge(i, 2); return [p[0] - run.n[i][0] * w, p[1] - run.n[i][1] * w] })
   runFill += `<path d="${poly(L)}${poly(R.reverse()).replace('M', 'L')}Z"/>`
   for (const k of run.track ? [0] : [-0.28, 0, 0.28]) cord += `<path d="${poly(offsetLine(run.c, run.n, run.w, k))}"/>`
   if (run.lit) {
@@ -122,7 +124,7 @@ for (const run of runs) {
 
 // ---------- lifts
 const lifts = [
-  { a: [730, 872], b: [900, 330], n: 16 },
+  { a: [768, 872], b: [900, 330], n: 16 },
   { a: [556, 868], b: [478, 520], n: 12 },
 ]
 let cables = '', towers = '', stations = '', chairs = ''
@@ -176,44 +178,28 @@ const glades = [
 ]
 // glades (tree runs): ragged strips through thinned forest; each leaves a groomer and rejoins one
 const at = (name, t) => { const run = runs.find(x => x.name === name); return run.c[Math.round(t * (run.c.length - 1))] }
-// A branch peels off alongside its parent run before curving away, and a merge
-// runs alongside the run it joins, so every junction is a shallow Y, not a T.
-const runAt = (name, t) => {
-  const run = runs.find(x => x.name === name)
-  const i = Math.round(Math.max(0, Math.min(1, t)) * (run.c.length - 1))
-  return { p: run.c[i], n: run.n[i], w: run.w(t) }
-}
-const sideOf = (a, q) => Math.sign((q[0] - a.p[0]) * a.n[0] + (q[1] - a.p[1]) * a.n[1]) || 1
-const beside = (a, side, k) => [a.p[0] + a.n[0] * side * a.w * k, a.p[1] + a.n[1] * side * a.w * k]
-const peel = (name, t, toward) => {
-  const a = runAt(name, t), side = sideOf(a, toward)
-  return [a.p, beside(runAt(name, t + 0.05), side, 0.45), beside(runAt(name, t + 0.1), side, 0.95)]
-}
-const merge = (name, t, from) => {
-  const a = runAt(name, t), side = sideOf(a, from)
-  return [beside(runAt(name, t - 0.1), side, 0.95), beside(runAt(name, t - 0.05), side, 0.45), a.p]
-}
 const gladeLines = [
-  { name: 'G1', pts: [...peel('B', 0.26, [990, 580]), [985, 600], [930, 670], ...merge('A', 0.86, [900, 740])], w0: 18, w1: 34 },
-  { name: 'G2', pts: [...peel('A', 0.4, [720, 590]), [700, 610], [630, 690], ...merge('C', 0.84, [590, 760])], w0: 18, w1: 32 },
-  { name: 'G3', pts: [...peel('B', 0.45, [1170, 730]), [1165, 735], [1212, 800], [1196, 862], [1145, 924]], w0: 18, w1: 34 }, // ends in the base snowfield
+  { name: 'G1', pts: [at('B', 0.24), [956, 522], [934, 620], [922, 720], [906, 820], [892, 922]], w0: 20, w1: 34 },
+  { name: 'G2', pts: [at('A', 0.3), [732, 548], [656, 614], [622, 704], [602, 804], [588, 922]], w0: 18, w1: 32 },
+  { name: 'G3', pts: [at('B', 0.5), [1148, 690], [1190, 780], [1172, 860], [1145, 924]], w0: 18, w1: 34 },
 ]
-let gladeD = ''
+let gladeD = '', gladeInner = ''
 for (const gl of gladeLines) {
   gl.c = catmull(gl.pts, 6)
   gl.n = normals(gl.c)
   gl.w = t => lerp(gl.w0, gl.w1, t)
-  const jitter = gl.c.map((_, i) => {
-    const t = i / (gl.c.length - 1)
-    const e = Math.min(t, 1 - t) // 0 at a junction
-    if (e < 0.14) { const k = lerp(0.62, 0.5, e / 0.14); return [k, k] }
-    return [r(0.34, 0.58), r(0.34, 0.58)]
-  })
-  const L = gl.c.map((p, i) => { const w = gl.w(i / (gl.c.length - 1)) * jitter[i][0]; return [p[0] + gl.n[i][0] * w, p[1] + gl.n[i][1] * w] })
-  const Rr = gl.c.map((p, i) => { const w = gl.w(i / (gl.c.length - 1)) * jitter[i][1]; return [p[0] - gl.n[i][0] * w, p[1] - gl.n[i][1] * w] })
-  gladeD += poly(L) + poly(Rr.reverse()).replace('M', 'L') + 'Z'
+  // wider where it meets a groomer, feathered edges in the trees
+  const flare = i => { const t = i / (gl.c.length - 1); return 1 + 0.9 * Math.exp(-Math.min(t, 1 - t) * 16) }
+  const jit = gl.c.map(() => [r(0.85, 1.15), r(0.85, 1.15)])
+  for (const [k, into] of [[0.62, 'outer'], [0.4, 'inner']]) {
+    const L = gl.c.map((p, i) => { const w = gl.w(i / (gl.c.length - 1)) * k * flare(i) * jit[i][0]; return [p[0] + gl.n[i][0] * w, p[1] + gl.n[i][1] * w] })
+    const Rr = gl.c.map((p, i) => { const w = gl.w(i / (gl.c.length - 1)) * k * flare(i) * jit[i][1]; return [p[0] - gl.n[i][0] * w, p[1] - gl.n[i][1] * w] })
+    const d = poly(L) + poly(Rr.reverse()).replace('M', 'L') + 'Z'
+    if (into === 'outer') gladeD += d
+    else gladeInner += d
+  }
 }
-const gladeBlobs = `<path d="${gladeD}"/>`
+const gladeBlobs = `<path d="${gladeD}" opacity=".45"/><path d="${gladeInner}" opacity=".55"/>`
 const inGladeC = (x, y) => gladeLines.some(gl => { const [d, t] = distToPolyline(x, y, gl.c); return d < gl.w(t) * 0.62 })
 const inGlade = (x, y) => glades.some(([x0, x1, y0, y1]) => x > x0 && x < x1 && y > y0 && y < y1)
 const treesArr = []
@@ -242,7 +228,7 @@ for (let i = 0; i < 9000 && treesArr.length < 950; i++) {
 }
 // trees standing in the tree runs, spaced so skiers could weave between them
 for (const gl of gladeLines) {
-  for (let k = 0; k < 24; k++) {
+  for (let k = 0; k < 30; k++) {
     const t = r(0.08, 0.95)
     const i = Math.round(t * (gl.c.length - 1))
     const off = r(-0.42, 0.42) * gl.w(t)
@@ -499,9 +485,9 @@ ${skierCss}
 <path d="${farD}" fill="url(#far)"/>
 <path d="${mountainD}" fill="url(#snow)"/>
 <path d="${forestD}" fill="#0e1628" opacity=".82"/>
-<g fill="url(#runfade)" opacity=".78">${gladeBlobs}</g>
+<g fill="url(#runfade)">${gladeBlobs}</g>
 <path d="${apronD}" fill="url(#runfade)"/><ellipse cx="760" cy="905" rx="300" ry="34" fill="url(#pool)" opacity=".7"/>
-<g fill="url(#runfade)">${runFill}${pads}</g>
+<g fill="url(#runfade)">${runFill}</g>
 <path d="${shadeD}" fill="url(#shade)"/>
 <g fill="none" stroke="#ffffff" stroke-width=".5" opacity=".25">${cord}</g>
 <g fill="url(#pool)">${pools}</g>
