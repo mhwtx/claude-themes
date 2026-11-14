@@ -5,7 +5,6 @@ import { SCENE } from './scene'
 
 const LOOK: ThemeSetArgs = {
   colors: theme,
-  overrideColorScheme: 'dark',
   backdrop: { scene: 'ski-night', glass: { blur: 18, tint: '#0d1220', opacity: 0.68 } },
 }
 

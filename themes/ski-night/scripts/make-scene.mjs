@@ -71,10 +71,12 @@ const mountainD = `${poly(ridge)}L1680 1000L-60 1000Z`
 const forestPts = []
 for (let x = -60; x <= 1680; x += 20) forestPts.push([x, Math.max(surfaceY(x) + 58 + r(-10, 10), 500 + r(-6, 6))])
 const jag = []
-for (let x = -60; x <= 1680; x += 5) {
+for (let x = -60; x <= 1680;) {
   const i = Math.max(0, Math.min(forestPts.length - 2, Math.floor((x + 60) / 20)))
   const y = lerp(forestPts[i][1], forestPts[i + 1][1], (x + 60 - i * 20) / 20)
-  jag.push([x, y + ((x / 5) % 2 ? -r(3, 9) : r(0, 3))])
+  const half = r(4, 8)
+  jag.push([x, y + r(0, 3)], [x + half, y - r(7, 17)])
+  x += half * 2
 }
 const forestY = x => {
   const i = Math.max(0, Math.min(forestPts.length - 2, Math.floor((x + 60) / 20)))
@@ -164,7 +166,7 @@ const apronTop = x => {
   return 936 - Math.sin(Math.PI * Math.min(1, Math.max(0, t))) * 70 + Math.sin(x / 23) * 3
 }
 const apronPts = []
-for (let x = 400; x <= 1180; x += 6) apronPts.push([x, apronTop(x) + ((x / 6) % 2 ? -r(2, 6) : r(0, 2))])
+for (let x = 400; x <= 1180; x += 10) apronPts.push([x, apronTop(x)])
 const apronD = poly(apronPts) + 'L1180 940L400 940Z'
 
 // ---------- groomed landing pads at the top of each lift
@@ -199,51 +201,40 @@ for (const gl of gladeLines) {
     else gladeInner += d
   }
 }
-const gladeBlobs = `<path d="${gladeD}" opacity=".45"/><path d="${gladeInner}" opacity=".55"/>`
+const gladeBlobs = `<path d="${gladeD}" opacity=".35"/><path d="${gladeInner}" opacity=".6"/>`
 const inGladeC = (x, y) => gladeLines.some(gl => { const [d, t] = distToPolyline(x, y, gl.c); return d < gl.w(t) * 0.62 })
 const inGlade = (x, y) => glades.some(([x0, x1, y0, y1]) => x > x0 && x < x1 && y > y0 && y < y1)
 const treesArr = []
-for (let i = 0; i < 9000 && treesArr.length < 950; i++) {
-  const x = r(-60, 1660)
-  const y = r(500, 912)
-  const h = Math.round(lerp(8, 24, (y - 500) / 412) * r(0.8, 1.2))
-  if (y < surfaceY(x) + 16) continue
-  if (y < forestY(x) - 6 && rand() > 0.06) continue
-  if (x > 396 && x < 1184 && y > apronTop(x) - 6) continue // base snowfield
+// a few lone trees straggling above the treeline
+for (let i = 0; i < 4000 && treesArr.length < 70; i++) {
+  const x = r(-40, 1640)
+  const y = forestY(x) - r(4, 34)
+  if (y < surfaceY(x) + 18) continue
   let bad = false
-  for (const run of runs) {
-    for (const yy of [y, y - h * 0.5, y - h]) {
-      const [d, t] = distToPolyline(x, yy, run.c)
-      if (d < run.w(t) / 2 + h * 0.25 + 1) { bad = true; break }
-    }
-    if (bad) break
-  }
+  for (const run of runs) { const [d, t] = distToPolyline(x, y, run.c); if (d < run.w(t) / 2 + 8) { bad = true; break } }
   if (bad) continue
-  for (const lift of lifts) {
-    if (Math.min(distToPolyline(x, y, [lift.a, lift.b])[0], distToPolyline(x, y - h, [lift.a, lift.b])[0]) < 8) { bad = true; break }
-  }
+  for (const lift of lifts) if (distToPolyline(x, y, [lift.a, lift.b])[0] < 10) { bad = true; break }
   if (bad) continue
-  if (inGladeC(x, y) && rand() > 0.6) continue
-  treesArr.push([x, y, h])
+  treesArr.push([x, y, Math.round(lerp(8, 20, (y - 480) / 430) * r(0.7, 1))])
 }
 // trees standing in the tree runs, spaced so skiers could weave between them
 for (const gl of gladeLines) {
-  for (let k = 0; k < 30; k++) {
+  for (let k = 0; k < 34; k++) {
     const t = r(0.08, 0.95)
     const i = Math.round(t * (gl.c.length - 1))
-    const off = r(-0.42, 0.42) * gl.w(t)
+    const off = r(-0.32, 0.32) * gl.w(t)
     const x = gl.c[i][0] + gl.n[i][0] * off, y = gl.c[i][1] + gl.n[i][1] * off
     treesArr.push([x, y, Math.round(lerp(8, 24, (y - 500) / 412) * r(0.7, 1))])
   }
 }
 treesArr.sort((a, b) => a[1] - b[1])
-let treeD = '', tipD = ''
-const g = Math.round
+let treeD = '', treeLit = ''
 for (const [x, y, h] of treesArr) {
-  const w = h * 0.46
-  const R = Math.round
-  treeD += `M${R(x)} ${R(y - h)}l${R(w * 0.36)} ${R(h * 0.5)}h${R(-w * 0.16)}l${R(w * 0.3)} ${R(h * 0.5)}h${-2 * R(w * 0.5)}l${R(w * 0.3)} ${-R(h * 0.5)}h${R(-w * 0.16)}z`
-  if (rand() < 0.3) tipD += `M${R(x)} ${R(y - h)}l${R(w * 0.24) || 1} ${R(h * 0.34)}h${-(R(w * 0.2) || 1)}z`
+  const w = h * 0.62, R = Math.round
+  const X = R(x), T = R(y - h), mid = R(y - h * 0.48)
+  // two tiers; the right half catches the moon
+  treeD += `M${X} ${T}L${R(x + w * 0.4)} ${mid}H${R(x + w * 0.22)}L${R(x + w * 0.5)} ${R(y)}H${R(x - w * 0.5)}L${R(x - w * 0.22)} ${mid}H${R(x - w * 0.4)}Z`
+  treeLit += `M${X} ${T}L${R(x + w * 0.4)} ${mid}H${R(x + w * 0.22)}L${R(x + w * 0.5)} ${R(y)}H${X}Z`
 }
 
 // ---------- skiers
@@ -447,6 +438,15 @@ for (let i = 0; i < 62; i++) {
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
 <defs>
+<pattern id="canopy" patternUnits="userSpaceOnUse" width="14" height="11" patternTransform="scale(.9)">
+<path d="M0 0L5 11H-5ZM14 0L19 11H9ZM7 5.5L12 16.5H2Z" fill="#101a2d"/>
+<path d="M0 0L5 11H0ZM14 0L19 11H14ZM7 5.5L12 16.5H7Z" fill="#16233b"/>
+</pattern>
+<pattern id="canopy2" patternUnits="userSpaceOnUse" width="23" height="17" patternTransform="translate(5 3) scale(1.3)">
+<path d="M3 0L9 17H-3ZM15 7L21 24H9Z" fill="#0d1628"/>
+<path d="M3 0L9 17H3ZM15 7L21 24H15Z" fill="#1a2843"/>
+</pattern>
+<linearGradient id="moonside" gradientUnits="userSpaceOnUse" x1="200" y1="0" x2="1500" y2="0"><stop offset="0" stop-color="#9fb4dc" stop-opacity="0"/><stop offset="1" stop-color="#9fb4dc" stop-opacity=".09"/></linearGradient>
 <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050913"/><stop offset=".5" stop-color="#0b1427"/><stop offset="1" stop-color="#1a2a48"/></linearGradient>
 <linearGradient id="far" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#55668a"/><stop offset=".22" stop-color="#2c3a58"/><stop offset="1" stop-color="#141c2e"/></linearGradient>
 <linearGradient id="snow" gradientUnits="userSpaceOnUse" x1="0" y1="250" x2="0" y2="1000"><stop offset="0" stop-color="#c3d0e6"/><stop offset=".45" stop-color="#7d8fb0"/><stop offset="1" stop-color="#3b4a69"/></linearGradient>
@@ -484,15 +484,14 @@ ${skierCss}
 <g class="land">
 <path d="${farD}" fill="url(#far)"/>
 <path d="${mountainD}" fill="url(#snow)"/>
-<path d="${forestD}" fill="#0e1628" opacity=".82"/>
+<path d="${forestD}" fill="#0c1424"/><path d="${forestD}" fill="url(#canopy)"/><path d="${forestD}" fill="url(#canopy2)" opacity=".55"/><path d="${forestD}" fill="url(#moonside)"/>
 <g fill="url(#runfade)">${gladeBlobs}</g>
 <path d="${apronD}" fill="url(#runfade)"/><ellipse cx="760" cy="905" rx="300" ry="34" fill="url(#pool)" opacity=".7"/>
 <g fill="url(#runfade)">${runFill}</g>
 <path d="${shadeD}" fill="url(#shade)"/>
 <g fill="none" stroke="#ffffff" stroke-width=".5" opacity=".25">${cord}</g>
 <g fill="url(#pool)">${pools}</g>
-<path d="${treeD}" fill="#0b1220"/>
-<path d="${tipD}" fill="#9fb0cc" opacity=".55"/>
+<path d="${treeD}" fill="#101a2e"/><path d="${treeLit}" fill="#22324f"/>
 <g fill="#0a0f1a">${stations}</g>
 <g stroke="#0a0f1a" stroke-width=".8" fill="none">${cables}</g>
 <g fill="#0a0f1a">${towers}</g>
