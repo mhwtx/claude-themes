@@ -1,0 +1,11 @@
+{
+  "name": "claude-themes",
+  "owner": { "name": "mhwtx" },
+  "plugins": [
+    {
+      "name": "ski-night",
+      "source": "./themes/ski-night",
+      "description": "A dark look with a live moonlit ski mountain behind the chat: lit groomers, tree runs, chairlifts, skiers and a little base village."
+    }
+  ]
+}
