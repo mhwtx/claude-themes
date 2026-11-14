@@ -77,6 +77,37 @@ for (let x = -60; x <= 1700;) {
   x += half * 2
 }
 const forestD = poly(jag) + 'L1700 1000L-60 1000Z'
+// a dark row of treetops along the skyline
+const skylineD = poly(jag) + poly(jag.slice().reverse().map(([x, y]) => [x, y + 9])).replace('M', 'L') + 'Z'
+
+// one snowy conifer: body, moonlit right half, snow on the top tier
+const treeParts = (x, y, h) => {
+  const w = h * 0.6, F = n => Math.round(n * 10) / 10
+  const X = F(x), T = F(y - h), mid = F(y - h * 0.48)
+  return [
+    `M${X} ${T}L${F(x + w * 0.4)} ${mid}H${F(x + w * 0.22)}L${F(x + w * 0.5)} ${F(y)}H${F(x - w * 0.5)}L${F(x - w * 0.22)} ${mid}H${F(x - w * 0.4)}Z`,
+    `M${X} ${T}L${F(x + w * 0.4)} ${mid}H${F(x + w * 0.22)}L${F(x + w * 0.5)} ${F(y)}H${X}Z`,
+    `M${X} ${T}L${F(x + w * 0.27)} ${F(y - h * 0.66)}H${F(x - w * 0.2)}Z`,
+  ]
+}
+// a seamless tile of trees: each tree is copied across the tile's edges it overlaps
+const treeTile = (id, W, H, n, hMin, hMax, bg) => {
+  const placed = []
+  for (let k = 0; k < n; k++) placed.push([r(0, W), r(0, H), r(hMin, hMax)])
+  const copies = []
+  for (const [x, y, h] of placed) {
+    for (const dx of [-W, 0, W]) for (const dy of [-H, 0, H]) {
+      const X = x + dx, Y = y + dy, w = h * 0.3
+      if (X + w < 0 || X - w > W || Y < 0 || Y - h > H) continue
+      copies.push([X, Y, h])
+    }
+  }
+  copies.sort((a, b) => a[1] - b[1])
+  const body = [], lit = [], snow = []
+  for (const [x, y, h] of copies) { const [a, b, c] = treeParts(x, y, h); body.push(a); lit.push(b); snow.push(c) }
+  return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${W}" height="${H}">${bg ? `<rect width="${W}" height="${H}" fill="${bg}"/>` : ''}<path d="${body.join('')}" fill="#0f192c"/><path d="${lit.join('')}" fill="#22334f"/><path d="${snow.join('')}" fill="#a9b9d3" opacity=".75"/></pattern>`
+}
+const forestTiles = treeTile('trees1', 117, 43, 27, 12, 21, '#334160') + treeTile('trees2', 163, 71, 19, 16, 27)
 
 // far range
 const far = [[-60, 600]]
@@ -428,14 +459,7 @@ for (let i = 0; i < 50; i++) {
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
 <defs>
-<pattern id="canopy" patternUnits="userSpaceOnUse" width="14" height="11" patternTransform="scale(.9)">
-<path d="M0 0L5 11H-5ZM14 0L19 11H9ZM7 5.5L12 16.5H2Z" fill="#101a2d"/>
-<path d="M0 0L5 11H0ZM14 0L19 11H14ZM7 5.5L12 16.5H7Z" fill="#16233b"/>
-</pattern>
-<pattern id="canopy2" patternUnits="userSpaceOnUse" width="23" height="17" patternTransform="translate(5 3) scale(1.3)">
-<path d="M3 0L9 17H-3ZM15 7L21 24H9Z" fill="#0d1628"/>
-<path d="M3 0L9 17H3ZM15 7L21 24H15Z" fill="#1a2843"/>
-</pattern>
+${forestTiles}
 <linearGradient id="moonside" gradientUnits="userSpaceOnUse" x1="200" y1="0" x2="1500" y2="0"><stop offset="0" stop-color="#9fb4dc" stop-opacity="0"/><stop offset="1" stop-color="#9fb4dc" stop-opacity=".09"/></linearGradient>
 <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050913"/><stop offset=".5" stop-color="#0b1427"/><stop offset="1" stop-color="#1a2a48"/></linearGradient>
 <linearGradient id="far" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#55668a"/><stop offset=".22" stop-color="#2c3a58"/><stop offset="1" stop-color="#141c2e"/></linearGradient>
@@ -474,7 +498,7 @@ ${skierCss}
 <g class="land">
 <path d="${farD}" fill="url(#far)"/>
 <path d="${mountainD}" fill="#0c1424"/>
-<path d="${forestD}" fill="#0c1424"/><path d="${forestD}" fill="url(#canopy)"/><path d="${forestD}" fill="url(#canopy2)" opacity=".55"/><path d="${forestD}" fill="url(#moonside)"/>
+<path d="${forestD}" fill="url(#trees1)"/><path d="${forestD}" fill="url(#trees2)"/><path d="${forestD}" fill="url(#moonside)"/><path d="${skylineD}" fill="#0f192c"/>
 <path d="${apronD}" fill="url(#piste)"/>
 <g fill="url(#piste)">${runFill}</g>
 <g fill="url(#piste)" opacity=".55">${gladeFill}</g><g fill="url(#piste)" opacity=".6">${trackFill}</g>
