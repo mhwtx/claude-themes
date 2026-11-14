@@ -8,7 +8,7 @@ Themes draw in the desktop and mobile apps. The terminal and editor extensions d
 
 | Theme | What it looks like |
 | --- | --- |
-| [`ski-night`](themes/ski-night) | A moonlit ski mountain at night: lit groomers and tree runs through the forest, two chairlifts running, skiers carving down, and a little base village glowing at the bottom while snow falls. Dark mode, with glacier-blue accents. |
+| [`ski-night`](themes/ski-night) | A moonlit ski hill at night: a broad forested ridge with wide runs fanning down between snowy tree strips, a tree run, two chairlifts running up the runs, skiers, and a little base village glowing at the bottom while snow falls. Dark mode, with glacier-blue accents. |
 
 ## Install
 

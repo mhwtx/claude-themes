@@ -50,41 +50,33 @@ const distToPolyline = (x, y, pts) => {
   return [best, bi]
 }
 
-// ---------- mountain outline
-const ridge = [
-  [-60, 770], [80, 720], [190, 660], [290, 610], [360, 575], [420, 548], [470, 520], [520, 505],
-  [565, 470], [610, 440], [660, 400], [705, 360], [745, 318], [790, 276], [822, 248], [846, 262],
-  [868, 284], [900, 300], [940, 322], [985, 330], [1030, 352], [1090, 388], [1160, 414], [1230, 446],
-  [1310, 486], [1400, 528], [1490, 572], [1580, 612], [1680, 650],
-]
+
+// ---------- the mountain: a broad, rounded ridge, forested right to the top
+const ridge = []
+for (let x = -60; x <= 1700; x += 40) {
+  const t = (x - 960) / 900
+  ridge.push([x, 288 + 380 * t * t * (x < 960 ? 1 : 0.62) + Math.sin(x / 70) * 4 + r(-3, 3)])
+}
 const surfaceY = x => {
+  const xx = Math.max(-60, Math.min(1699, x))
   for (let i = 0; i < ridge.length - 1; i++) {
-    if (x >= ridge[i][0] && x <= ridge[i + 1][0]) {
-      return lerp(ridge[i][1], ridge[i + 1][1], (x - ridge[i][0]) / (ridge[i + 1][0] - ridge[i][0]))
+    if (xx >= ridge[i][0] && xx <= ridge[i + 1][0]) {
+      return lerp(ridge[i][1], ridge[i + 1][1], (xx - ridge[i][0]) / (ridge[i + 1][0] - ridge[i][0]))
     }
   }
-  return 800
+  return ridge[ridge.length - 1][1]
 }
-const mountainD = `${poly(ridge)}L1680 1000L-60 1000Z`
+const mountainD = `${poly(ridge)}L1700 1000L-60 1000Z`
 
-// forest line: dense forest below it
-const forestPts = []
-for (let x = -60; x <= 1680; x += 20) forestPts.push([x, Math.max(surfaceY(x) + 3, 500 + r(-8, 8))])
+// the forest: treetops along the skyline, canopy texture below
 const jag = []
-for (let x = -60; x <= 1680;) {
-  const i = Math.max(0, Math.min(forestPts.length - 2, Math.floor((x + 60) / 20)))
-  const y = lerp(forestPts[i][1], forestPts[i + 1][1], (x + 60 - i * 20) / 20)
+for (let x = -60; x <= 1700;) {
+  const y = surfaceY(x) + 2
   const half = r(4, 8)
-  jag.push([x, y + r(0, 3)], [x + half, y - r(7, 17)])
+  jag.push([x, y + r(0, 2)], [x + half, y - r(6, 15)])
   x += half * 2
 }
-const forestY = x => {
-  const i = Math.max(0, Math.min(forestPts.length - 2, Math.floor((x + 60) / 20)))
-  return lerp(forestPts[i][1], forestPts[i + 1][1], (x - forestPts[i][0]) / 20)
-}
-const forestD = poly(jag) + 'L1680 1000L-60 1000Z'
-// moon is to the right: the west face, left of a spur running down from the peak, is in shadow
-const shadeD = `M822 248${poly(ridge.filter(p => p[0] < 822).reverse()).replace('M', 'L')}L-60 1000L700 1000L742 760L770 600L790 470L805 360Z`
+const forestD = poly(jag) + 'L1700 1000L-60 1000Z'
 
 // far range
 const far = [[-60, 600]]
@@ -92,42 +84,65 @@ for (let x = -60; x <= 1680; x += 40) far.push([x, 470 + Math.sin(x / 130) * 50 
 far.push([1680, 1000], [-60, 1000])
 const farD = poly(far) + 'Z'
 
-// ---------- runs (groomers)
+// ---------- base snowfield: the runs widen and merge into it above the village
+const apronTop = x => {
+  const t = Math.min(1, Math.max(0, (x - 360) / 960))
+  return 940 - Math.sin(Math.PI * t) * 74 + Math.sin(x / 31) * 2
+}
+const apronPts = []
+for (let x = 360; x <= 1320; x += 10) apronPts.push([x, apronTop(x)])
+const apronD = poly(apronPts) + 'L1320 944L360 944Z'
+
+// ---------- runs: wide swaths straight down the fall line, from just under the ridge
+const top = x => [x, surfaceY(x) + 14]
 const runs = [
-  { name: 'A', lit: true, pts: [[896, 340], [852, 386], [812, 446], [786, 520], [764, 600], [738, 690], [716, 780], [700, 860], [690, 920]], w0: 16, w1: 46 },
-  { name: 'B', lit: false, pts: [[906, 342], [958, 400], [1006, 470], [1040, 550], [1066, 640], [1078, 730], [1074, 820], [1056, 920]], w0: 16, w1: 42 },
-  { name: 'C', lit: true, pts: [[480, 528], [458, 600], [452, 680], [470, 760], [498, 840], [516, 920]], w0: 14, w1: 40 },
-  { name: 'T1', lit: false, pts: [[890, 338], [790, 380], [680, 430], [580, 480], [490, 524]], w0: 8, w1: 9, track: true },
+  { name: 'R1', pts: [top(560), [540, 500], [522, 600], [522, 700], [546, 800], [586, 904]], w0: 36, w1: 86 },
+  { name: 'R2', lit: true, pts: [top(720), [702, 440], [674, 540], [660, 650], [668, 760], [690, 906]], w0: 46, w1: 102 },
+  { name: 'R3', lit: true, pts: [top(880), [872, 420], [856, 540], [836, 660], [812, 780], [790, 906]], w0: 56, w1: 122 },
+  { name: 'R5', pts: [top(1080), [1092, 430], [1084, 540], [1060, 650], [1040, 760], [1010, 906]], w0: 48, w1: 104 },
+  { name: 'R6', pts: [top(1260), [1268, 460], [1240, 580], [1200, 690], [1150, 800], [1110, 906]], w0: 40, w1: 96 },
 ]
-let runFill = '', cord = '', pools = '', lamps = ''
+{
+  const r3 = runs[2], c = catmull(r3.pts)
+  runs.push({ name: 'R4', glade: true, pts: [c[Math.round(0.24 * (c.length - 1))], [930, 520], [952, 640], [934, 760], [902, 906]], w0: 30, w1: 72 })
+}
+// the summit track along the ridge links every run top to both lifts
+const trackPts = []
+for (let x = 540; x <= 1280; x += 74) trackPts.push([x, surfaceY(x) + 17])
+runs.push({ name: 'T', track: true, pts: trackPts, w0: 6, w1: 6 })
+
+let runFill = '', gladeFill = '', trackFill = '', cord = '', pools = '', lamps = ''
 for (const run of runs) {
   run.c = catmull(run.pts)
   run.n = normals(run.c)
-  const ph = r(0, 6)
-  run.w = t => lerp(run.w0, run.w1, t) * (1 + Math.sin(t * 9 + ph) * 0.1) + (run.track ? 0 : 16 * Math.exp(-t * 14))
-  const edge = (i, k) => 1 + Math.sin(i * 0.9 + ph * k * 3) * 0.05 + Math.sin(i * 2.3 + k) * 0.03
+  const ph = r(0, 6), ph2 = r(0, 6)
+  run.w = t => lerp(run.w0, run.w1, Math.pow(t, 0.85)) * (run.track ? 1 : 1 + 0.18 * Math.sin(t * 7 + ph) + 0.08 * Math.sin(t * 17 + ph2))
+  // tree-lined edges wander; each side on its own
+  const edge = (i, k) => run.track ? 1 : 1 + 0.1 * Math.sin(i * 0.8 + ph * k) + 0.06 * Math.sin(i * 2.1 + k) + r(-0.05, 0.05)
   const L = run.c.map((p, i) => { const w = run.w(i / (run.c.length - 1)) * 0.5 * edge(i, 1); return [p[0] + run.n[i][0] * w, p[1] + run.n[i][1] * w] })
   const R = run.c.map((p, i) => { const w = run.w(i / (run.c.length - 1)) * 0.5 * edge(i, 2); return [p[0] - run.n[i][0] * w, p[1] - run.n[i][1] * w] })
-  runFill += `<path d="${poly(L)}${poly(R.reverse()).replace('M', 'L')}Z"/>`
-  for (const k of run.track ? [0] : [-0.28, 0, 0.28]) cord += `<path d="${poly(offsetLine(run.c, run.n, run.w, k))}"/>`
+  const d = `<path d="${poly(L)}${poly(R.reverse()).replace('M', 'L')}Z"/>`
+  if (run.glade) gladeFill += d
+  else if (run.track) trackFill += d
+  else runFill += d
   if (run.lit) {
-    for (let i = 4; i < run.c.length - 1; i += 6) {
+    for (let i = 4; i < run.c.length - 1; i += 5) {
       const t = i / (run.c.length - 1)
-      for (const side of [0.62, -0.62]) {
+      for (const side of [0.5, -0.5]) {
         const w = run.w(t) * side
         const x = run.c[i][0] + run.n[i][0] * w, y = run.c[i][1] + run.n[i][1] * w
-        const s = lerp(0.6, 1.3, t)
-        pools += `<ellipse cx="${f(x - side * 6 * s)}" cy="${f(y + 2 * s)}" rx="${f(16 * s)}" ry="${f(7 * s)}"/>`
-        lamps += `<rect x="${f(x - 0.5)}" y="${f(y - 9 * s)}" width="1" height="${f(9 * s)}" fill="#0a0f1a"/><circle cx="${f(x)}" cy="${f(y - 9 * s)}" r="${f(1.4 * s)}"/>`
+        const s = lerp(0.7, 1.3, t)
+        pools += `<ellipse cx="${f(x - side * 14 * s)}" cy="${f(y + 2 * s)}" rx="${f(18 * s)}" ry="${f(7 * s)}"/>`
+        lamps += `<rect x="${f(x - 0.5)}" y="${f(y - 10 * s)}" width="1" height="${f(10 * s)}" fill="#0a0f1a"/><circle cx="${f(x)}" cy="${f(y - 10 * s)}" r="${f(1.5 * s)}"/>`
       }
     }
   }
 }
 
-// ---------- lifts
+// ---------- lifts: straight up a run, top station at the ridge
 const lifts = [
-  { a: [768, 872], b: [900, 330], n: 16 },
-  { a: [556, 868], b: [478, 520], n: 12 },
+  { a: [784, 884], b: [872, surfaceY(872) + 13], n: 12 },
+  { a: [1124, 884], b: [1256, surfaceY(1256) + 13], n: 9 },
 ]
 let cables = '', towers = '', stations = '', chairs = ''
 let chairCss = ''
@@ -137,15 +152,14 @@ for (const [li, lift] of lifts.entries()) {
   const nx = -dy / l, ny = dx / l
   const up = [[ax + nx * 3, ay + ny * 3], [bx + nx * 3, by + ny * 3]]
   const dn = [[ax - nx * 3, ay - ny * 3], [bx - nx * 3, by - ny * 3]]
-  lift.up = up; lift.dn = dn
   cables += `<path d="M${f(up[0][0])} ${f(up[0][1])}L${f(up[1][0])} ${f(up[1][1])}M${f(dn[0][0])} ${f(dn[0][1])}L${f(dn[1][0])} ${f(dn[1][1])}"/>`
-  for (let t = 0.1; t < 0.95; t += 0.13) {
+  for (let t = 0.1; t < 0.95; t += 0.11) {
     const x = lerp(ax, bx, t), y = lerp(ay, by, t)
-    const h = lerp(26, 14, t)
+    const h = lerp(24, 13, t)
     towers += `<rect x="${f(x - 0.8)}" y="${f(y - 2)}" width="1.6" height="${f(h)}"/><rect x="${f(x - 5)}" y="${f(y - 2.5)}" width="10" height="1.4"/>`
   }
-  stations += `<path d="M${ax - 16} ${ay + 6}V${ay - 6}L${ax} ${ay - 14}L${ax + 16} ${ay - 6}V${ay + 6}Z"/><path d="M${bx - 10} ${by + 6}V${by - 4}L${bx} ${by - 10}L${bx + 10} ${by - 4}V${by + 6}Z"/>`
-  stations += `<rect class="win" x="${ax - 8}" y="${ay - 3}" width="5" height="4"/><rect class="win" x="${ax + 3}" y="${ay - 3}" width="5" height="4"/><rect class="win" x="${bx - 3}" y="${by - 2}" width="6" height="3.5"/>`
+  stations += `<path d="M${ax - 16} ${ay + 6}V${ay - 6}L${ax} ${ay - 14}L${ax + 16} ${ay - 6}V${ay + 6}Z"/><path d="M${f(bx - 10)} ${f(by + 6)}V${f(by - 4)}L${f(bx)} ${f(by - 10)}L${f(bx + 10)} ${f(by - 4)}V${f(by + 6)}Z"/>`
+  stations += `<rect class="win" x="${ax - 8}" y="${ay - 3}" width="5" height="4"/><rect class="win" x="${ax + 3}" y="${ay - 3}" width="5" height="4"/><rect class="win" x="${f(bx - 3)}" y="${f(by - 2)}" width="6" height="3.5"/>`
   const dur = 70
   for (const [dir, line] of [['u', up], ['d', dn]]) {
     const from = dir === 'u' ? line[0] : line[1]
@@ -160,104 +174,79 @@ for (const [li, lift] of lifts.entries()) {
   }
 }
 
-// ---------- base snowfield (runout where every run ends)
-const apronTop = x => {
-  const t = (x - 400) / 780 // 400..1180
-  return 936 - Math.sin(Math.PI * Math.min(1, Math.max(0, t))) * 70 + Math.sin(x / 23) * 3
-}
-const apronPts = []
-for (let x = 400; x <= 1180; x += 10) apronPts.push([x, apronTop(x)])
-const apronD = poly(apronPts) + 'L1180 940L400 940Z'
-
-// ---------- groomed landing pads at the top of each lift
-const pads = lifts.map(l => `<ellipse cx="${l.b[0]}" cy="${l.b[1] + 9}" rx="34" ry="11"/>`).join('')
-
-// ---------- trees
-const glades = [
-  [870, 1000, 560, 830], // between runs A and B: tree run
-  [560, 700, 600, 800], // left glade
-  [1180, 1320, 560, 760], // right glade
-]
-// glades (tree runs): ragged strips through thinned forest; each leaves a groomer and rejoins one
-const at = (name, t) => { const run = runs.find(x => x.name === name); return run.c[Math.round(t * (run.c.length - 1))] }
-const gladeLines = [
-  { name: 'G1', pts: [at('B', 0.24), [956, 522], [934, 620], [922, 720], [906, 820], [892, 922]], w0: 20, w1: 34 },
-  { name: 'G2', pts: [at('A', 0.3), [732, 548], [656, 614], [622, 704], [602, 804], [588, 922]], w0: 18, w1: 32 },
-  { name: 'G3', pts: [at('B', 0.5), [1148, 690], [1190, 780], [1172, 860], [1145, 924]], w0: 18, w1: 34 },
-]
-let gladeD = '', gladeInner = ''
-for (const gl of gladeLines) {
-  gl.c = catmull(gl.pts, 6)
-  gl.n = normals(gl.c)
-  gl.w = t => lerp(gl.w0, gl.w1, t)
-  // wider where it meets a groomer, feathered edges in the trees
-  const flare = i => { const t = i / (gl.c.length - 1); return 1 + 0.9 * Math.exp(-Math.min(t, 1 - t) * 16) }
-  const jit = gl.c.map(() => [r(0.85, 1.15), r(0.85, 1.15)])
-  for (const [k, into] of [[0.62, 'outer'], [0.4, 'inner']]) {
-    const L = gl.c.map((p, i) => { const w = gl.w(i / (gl.c.length - 1)) * k * flare(i) * jit[i][0]; return [p[0] + gl.n[i][0] * w, p[1] + gl.n[i][1] * w] })
-    const Rr = gl.c.map((p, i) => { const w = gl.w(i / (gl.c.length - 1)) * k * flare(i) * jit[i][1]; return [p[0] - gl.n[i][0] * w, p[1] - gl.n[i][1] * w] })
-    const d = poly(L) + poly(Rr.reverse()).replace('M', 'L') + 'Z'
-    if (into === 'outer') gladeD += d
-    else gladeInner += d
-  }
-}
-const gladeBlobs = `<path d="${gladeD}" opacity=".35"/><path d="${gladeInner}" opacity=".6"/>`
-const inGladeC = (x, y) => gladeLines.some(gl => { const [d, t] = distToPolyline(x, y, gl.c); return d < gl.w(t) * 0.62 })
-const inGlade = (x, y) => glades.some(([x0, x1, y0, y1]) => x > x0 && x < x1 && y > y0 && y < y1)
+// ---------- trees: snow-dusted conifers along the run edges, islands in the wide runs, and the tree run
+const nearLift = (x, y) => lifts.some(l => distToPolyline(x, y, [l.a, l.b])[0] < 8)
+const inRunCore = (x, y) => runs.some(run => { if (run.glade || run.track) return false; const [d, t] = distToPolyline(x, y, run.c); return d < run.w(t) * 0.38 })
+const heightAt = y => lerp(11, 32, (y - 300) / 600)
 const treesArr = []
-// a few lone trees straggling above the treeline
-for (let i = 0; i < 4000 && treesArr.length < 70; i++) {
-  const x = r(-40, 1640)
-  const y = forestY(x) - r(4, 34)
-  if (y < surfaceY(x) + 18) continue
-  let bad = false
-  for (const run of runs) { const [d, t] = distToPolyline(x, y, run.c); if (d < run.w(t) / 2 + 8) { bad = true; break } }
-  if (bad) continue
-  for (const lift of lifts) if (distToPolyline(x, y, [lift.a, lift.b])[0] < 10) { bad = true; break }
-  if (bad) continue
-  treesArr.push([x, y, Math.round(lerp(8, 20, (y - 480) / 430) * r(0.7, 1))])
-}
-// trees standing in the tree runs, spaced so skiers could weave between them
-for (const gl of gladeLines) {
-  for (let k = 0; k < 34; k++) {
-    const t = r(0.08, 0.95)
-    const i = Math.round(t * (gl.c.length - 1))
-    const off = r(-0.32, 0.32) * gl.w(t)
-    const x = gl.c[i][0] + gl.n[i][0] * off, y = gl.c[i][1] + gl.n[i][1] * off
-    treesArr.push([x, y, Math.round(lerp(8, 24, (y - 500) / 412) * r(0.7, 1))])
+for (const run of runs) {
+  if (run.track) continue
+  for (let i = 1; i < run.c.length - 1; i++) {
+    const t = i / (run.c.length - 1)
+    for (const side of [1, -1]) {
+      if (rand() > 0.62) continue
+      const n = rand() < 0.35 ? 2 : 1
+      for (let k = 0; k < n; k++) {
+        const off = side * (run.w(t) / 2 + r(-8, 6))
+        const x = run.c[i][0] + run.n[i][0] * off + r(-4, 4), y = run.c[i][1] + run.n[i][1] * off + r(-5, 5)
+        if (y > apronTop(x) - 6 || nearLift(x, y) || inRunCore(x, y)) continue
+        treesArr.push([x, y, heightAt(y) * r(0.75, 1.1)])
+      }
+    }
   }
+}
+// tree islands left standing in the wide runs
+for (const [rn, t0, side, n] of [['R3', 0.5, -1, 6], ['R5', 0.42, 1, 5], ['R2', 0.62, 1, 5], ['R6', 0.55, -1, 4], ['R1', 0.45, 1, 4], ['R5', 0.72, -1, 3], ['R2', 0.3, -1, 3]]) {
+  const run = runs.find(x => x.name === rn)
+  const i0 = Math.round(t0 * (run.c.length - 1))
+  const off0 = side * 0.24 * run.w(t0)
+  const cx = run.c[i0][0] + run.n[i0][0] * off0, cy = run.c[i0][1] + run.n[i0][1] * off0
+  for (let k = 0; k < n; k++) {
+    const x = cx + r(-9, 9), y = cy + r(-12, 12)
+    if (!nearLift(x, y)) treesArr.push([x, y, heightAt(y) * r(0.8, 1.1)])
+  }
+}
+// the tree run: skiable, with trees spread all through it
+const glade = runs.find(x => x.glade)
+for (let k = 0; k < 40; k++) {
+  const t = r(0.06, 0.96)
+  const i = Math.round(t * (glade.c.length - 1))
+  const off = r(-0.4, 0.4) * glade.w(t)
+  const x = glade.c[i][0] + glade.n[i][0] * off, y = glade.c[i][1] + glade.n[i][1] * off
+  if (y < apronTop(x) - 6) treesArr.push([x, y, heightAt(y) * r(0.7, 1)])
 }
 treesArr.sort((a, b) => a[1] - b[1])
-let treeD = '', treeLit = ''
-for (const [x, y, h] of treesArr) {
-  const w = h * 0.62, R = Math.round
-  const X = R(x), T = R(y - h), mid = R(y - h * 0.48)
-  // two tiers; the right half catches the moon
-  treeD += `M${X} ${T}L${R(x + w * 0.4)} ${mid}H${R(x + w * 0.22)}L${R(x + w * 0.5)} ${R(y)}H${R(x - w * 0.5)}L${R(x - w * 0.22)} ${mid}H${R(x - w * 0.4)}Z`
-  treeLit += `M${X} ${T}L${R(x + w * 0.4)} ${mid}H${R(x + w * 0.22)}L${R(x + w * 0.5)} ${R(y)}H${X}Z`
+let treeD = '', treeLit = '', treeSnow = ''
+for (const [x, y, h0] of treesArr) {
+  const R = Math.round, w = h0 * 0.6
+  const X = R(x), T = R(y - h0), hh = R(h0)
+  const a = R(w * 0.4), b = R(h0 * 0.52), c = R(w * 0.18), e = R(w * 0.5)
+  // two tiers, the right half lit by the moon, snow resting on the top
+  treeD += `M${X} ${T}l${a} ${b}h${-c}l${e - a + c} ${hh - b}h${-2 * e}l${e - a + c} ${b - hh}h${-c}z`
+  treeLit += `M${X} ${T}l${a} ${b}h${-c}l${e - a + c} ${hh - b}H${X}z`
+  treeSnow += `M${X} ${T}l${R(w * 0.27) || 1} ${R(h0 * 0.34) || 1}h${-(R(w * 0.47) || 1)}z`
 }
 
 // ---------- skiers
 const skierShape = col => `<path d="M-5 0.3L5 1.1" stroke="#1a2236" stroke-width="1"/><path d="M-1.6 -1L0.2 -4.6L1.6 -1" stroke="#1a2236" stroke-width="1.1" fill="none"/><path d="M-1.4 -4.4L1.6 -4.8L1.1 -8L-1 -7.7Z" fill="${col}"/><circle cx="0.2" cy="-9.3" r="1.4" fill="#f1d6c4"/><path d="M-2.6 -5.6L-4.6 0M2.4 -5.8L4.8 -0.4" stroke="#4a5470" stroke-width=".5"/>`
 let skiers = '', skierCss = ''
 const skierPlan = [
-  ['A', 0, 26, '#e04848'], ['A', 0.4, 30, '#f2c23a'], ['A', 0.75, 24, '#3fb6c9'],
-  ['B', 0.2, 32, '#9b6cf0'], ['B', 0.65, 28, '#ff8a3d'],
-  ['C', 0.1, 24, '#3fdc8f'], ['C', 0.55, 27, '#e04848'],
-  ['T1', 0.3, 30, '#f2c23a'], ['G1', 0.5, 26, '#3fb6c9'], ['G3', 0.2, 28, '#e7e9ee'],
+  ['R1', 0.2, 24, '#3fdc8f'], ['R2', 0, 26, '#e04848'], ['R2', 0.55, 28, '#f2c23a'],
+  ['R3', 0.15, 30, '#3fb6c9'], ['R3', 0.6, 26, '#ff8a3d'], ['R4', 0.4, 30, '#e7e9ee'],
+  ['R5', 0.3, 28, '#9b6cf0'], ['R6', 0.7, 27, '#e04848'], ['T', 0.3, 34, '#f2c23a'],
 ]
 for (const [si, [rn, phase, dur, col]] of skierPlan.entries()) {
-  const run = runs.find(x => x.name === rn) || gladeLines.find(x => x.name === rn)
-  const steps = 24
+  const run = runs.find(x => x.name === rn)
+  const steps = 16
   let kf = ''
   for (let s = 0; s <= steps; s++) {
     const t = s / steps
     const i = Math.round(t * (run.c.length - 1))
-    const carve = Math.sin(s * 1.6 + si) * 0.3
+    const carve = run.track ? 0 : Math.sin(s * 1.6 + si) * 0.28
     const w = run.w(t) * carve
     const x = run.c[i][0] + run.n[i][0] * w
     const y = run.c[i][1] + run.n[i][1] * w
-    const sc = lerp(0.65, 1.7, t)
+    const sc = lerp(0.7, 1.7, (y - 320) / 600)
     const flip = Math.cos(s * 1.6 + si) > 0 ? 1 : -1
     const op = s === 0 || s === steps ? 0 : 1
     kf += `${f(t * 100)}%{transform:translate(${f(x)}px,${f(y)}px) scale(${f(sc * flip)},${f(sc)});opacity:${op}}`
@@ -265,6 +254,7 @@ for (const [si, [rn, phase, dur, col]] of skierPlan.entries()) {
   skierCss += `@keyframes sk${si}{${kf}}`
   skiers += `<g style="animation:sk${si} ${dur}s linear infinite;animation-delay:-${f(phase * dur)}s">${skierShape(col)}</g>`
 }
+
 
 // ---------- base village
 const R1 = n => Math.round(n * 2) / 2
@@ -427,11 +417,11 @@ for (const [x, y, h] of [[40, 960, 300], [130, 975, 220], [-20, 990, 360], [1560
 
 // ---------- stars and snowfall
 let stars = ''
-for (let i = 0; i < 60; i++) {
+for (let i = 0; i < 48; i++) {
   stars += `<circle class="star" cx="${f(r(0, 1600))}" cy="${f(r(0, 460))}" r="${f(r(0.5, 1.5))}" style="animation-duration:${f(r(3, 7))}s;animation-delay:-${f(r(0, 7))}s"/>`
 }
 let snow = ''
-for (let i = 0; i < 62; i++) {
+for (let i = 0; i < 50; i++) {
   const near = rand() < 0.25
   snow += `<circle class="flake" cx="${f(r(-100, 1700))}" cy="-20" r="${f(near ? r(1.6, 2.6) : r(0.6, 1.3))}" style="--dx:${f(r(-60, 60))}px;animation-duration:${f(near ? r(9, 13) : r(16, 26))}s;animation-delay:-${f(r(0, 26))}s;opacity:${near ? 0.75 : 0.5}"/>`
 }
@@ -449,8 +439,8 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" pre
 <linearGradient id="moonside" gradientUnits="userSpaceOnUse" x1="200" y1="0" x2="1500" y2="0"><stop offset="0" stop-color="#9fb4dc" stop-opacity="0"/><stop offset="1" stop-color="#9fb4dc" stop-opacity=".09"/></linearGradient>
 <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050913"/><stop offset=".5" stop-color="#0b1427"/><stop offset="1" stop-color="#1a2a48"/></linearGradient>
 <linearGradient id="far" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#55668a"/><stop offset=".22" stop-color="#2c3a58"/><stop offset="1" stop-color="#141c2e"/></linearGradient>
-<linearGradient id="snow" gradientUnits="userSpaceOnUse" x1="0" y1="250" x2="0" y2="1000"><stop offset="0" stop-color="#c3d0e6"/><stop offset=".45" stop-color="#7d8fb0"/><stop offset="1" stop-color="#3b4a69"/></linearGradient>
-<linearGradient id="shade" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="820" y2="0"><stop offset="0" stop-color="#070c19" stop-opacity=".62"/><stop offset="1" stop-color="#070c19" stop-opacity=".38"/></linearGradient><linearGradient id="runfade" gradientUnits="userSpaceOnUse" x1="0" y1="300" x2="0" y2="900"><stop offset="0" stop-color="#eef3fb" stop-opacity=".22"/><stop offset=".35" stop-color="#eef3fb" stop-opacity=".7"/><stop offset="1" stop-color="#eef3fb" stop-opacity=".85"/></linearGradient>
+<linearGradient id="piste" gradientUnits="userSpaceOnUse" x1="0" y1="300" x2="0" y2="930"><stop offset="0" stop-color="#b8c6dd" stop-opacity=".88"/><stop offset="1" stop-color="#e4ebf6" stop-opacity=".93"/></linearGradient>
+<linearGradient id="shade" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1600" y2="0"><stop offset="0" stop-color="#050a16" stop-opacity=".5"/><stop offset=".6" stop-color="#050a16" stop-opacity=".14"/><stop offset="1" stop-color="#050a16" stop-opacity="0"/></linearGradient>
 <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a9bba"/><stop offset="1" stop-color="#3c4a68"/></linearGradient>
 <radialGradient id="moonglow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#dfe8ff" stop-opacity=".35"/><stop offset="1" stop-color="#dfe8ff" stop-opacity="0"/></radialGradient>
 <radialGradient id="warm" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffc77a" stop-opacity=".55"/><stop offset="1" stop-color="#ffc77a" stop-opacity="0"/></radialGradient>
@@ -483,15 +473,15 @@ ${skierCss}
 <circle cx="1242" cy="152" r="5" fill="#d3dbea" opacity=".6"/><circle cx="1258" cy="170" r="3.5" fill="#d3dbea" opacity=".6"/>
 <g class="land">
 <path d="${farD}" fill="url(#far)"/>
-<path d="${mountainD}" fill="url(#snow)"/>
+<path d="${mountainD}" fill="#0c1424"/>
 <path d="${forestD}" fill="#0c1424"/><path d="${forestD}" fill="url(#canopy)"/><path d="${forestD}" fill="url(#canopy2)" opacity=".55"/><path d="${forestD}" fill="url(#moonside)"/>
-<g fill="url(#runfade)">${gladeBlobs}</g>
-<path d="${apronD}" fill="url(#runfade)"/><ellipse cx="760" cy="905" rx="300" ry="34" fill="url(#pool)" opacity=".7"/>
-<g fill="url(#runfade)">${runFill}</g>
-<path d="${shadeD}" fill="url(#shade)"/>
-<g fill="none" stroke="#ffffff" stroke-width=".5" opacity=".25">${cord}</g>
+<path d="${apronD}" fill="url(#piste)"/>
+<g fill="url(#piste)">${runFill}</g>
+<g fill="url(#piste)" opacity=".55">${gladeFill}</g><g fill="url(#piste)" opacity=".6">${trackFill}</g>
+<path d="${mountainD}" fill="url(#shade)"/>
+<ellipse cx="800" cy="900" rx="360" ry="40" fill="url(#pool)" opacity=".6"/>
 <g fill="url(#pool)">${pools}</g>
-<path d="${treeD}" fill="#101a2e"/><path d="${treeLit}" fill="#22324f"/>
+<path d="${treeD}" fill="#0f192c"/><path d="${treeLit}" fill="#203050"/><path d="${treeSnow}" fill="#a9b9d3" opacity=".8"/>
 <g fill="#0a0f1a">${stations}</g>
 <g stroke="#0a0f1a" stroke-width=".8" fill="none">${cables}</g>
 <g fill="#0a0f1a">${towers}</g>
