@@ -58,3 +58,7 @@ node themes/ski-night/scripts/make-scene.mjs themes/ski-night/hooks/scene.ts
 ```
 
 That rewrites `scene.ts` and writes `scene.preview.svg` beside it, which you can open in a browser to check the result (it's git-ignored). The script refuses to write a scene over the app's 131,072-character limit.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

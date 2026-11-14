@@ -165,6 +165,9 @@ const apronPts = []
 for (let x = 400; x <= 1180; x += 6) apronPts.push([x, apronTop(x) + ((x / 6) % 2 ? -r(2, 6) : r(0, 2))])
 const apronD = poly(apronPts) + 'L1180 940L400 940Z'
 
+// ---------- groomed landing pads at the top of each lift
+const pads = lifts.map(l => `<ellipse cx="${l.b[0]}" cy="${l.b[1] + 9}" rx="34" ry="11"/>`).join('')
+
 // ---------- trees
 const glades = [
   [870, 1000, 560, 830], // between runs A and B: tree run
@@ -173,17 +176,39 @@ const glades = [
 ]
 // glades (tree runs): ragged strips through thinned forest; each leaves a groomer and rejoins one
 const at = (name, t) => { const run = runs.find(x => x.name === name); return run.c[Math.round(t * (run.c.length - 1))] }
+// A branch peels off alongside its parent run before curving away, and a merge
+// runs alongside the run it joins, so every junction is a shallow Y, not a T.
+const runAt = (name, t) => {
+  const run = runs.find(x => x.name === name)
+  const i = Math.round(Math.max(0, Math.min(1, t)) * (run.c.length - 1))
+  return { p: run.c[i], n: run.n[i], w: run.w(t) }
+}
+const sideOf = (a, q) => Math.sign((q[0] - a.p[0]) * a.n[0] + (q[1] - a.p[1]) * a.n[1]) || 1
+const beside = (a, side, k) => [a.p[0] + a.n[0] * side * a.w * k, a.p[1] + a.n[1] * side * a.w * k]
+const peel = (name, t, toward) => {
+  const a = runAt(name, t), side = sideOf(a, toward)
+  return [a.p, beside(runAt(name, t + 0.05), side, 0.45), beside(runAt(name, t + 0.1), side, 0.95)]
+}
+const merge = (name, t, from) => {
+  const a = runAt(name, t), side = sideOf(a, from)
+  return [beside(runAt(name, t - 0.1), side, 0.95), beside(runAt(name, t - 0.05), side, 0.45), a.p]
+}
 const gladeLines = [
-  { name: 'G1', pts: [at('B', 0.3), [990, 570], [935, 650], [880, 730], at('A', 0.86)], w0: 18, w1: 34 },
-  { name: 'G2', pts: [at('A', 0.42), [720, 580], [650, 660], [580, 750], at('C', 0.82)], w0: 18, w1: 32 },
-  { name: 'G3', pts: [at('B', 0.47), [1160, 620], [1240, 700], [1235, 790], at('B', 0.9)], w0: 18, w1: 32 },
+  { name: 'G1', pts: [...peel('B', 0.26, [990, 580]), [985, 600], [930, 670], ...merge('A', 0.86, [900, 740])], w0: 18, w1: 34 },
+  { name: 'G2', pts: [...peel('A', 0.4, [720, 590]), [700, 610], [630, 690], ...merge('C', 0.84, [590, 760])], w0: 18, w1: 32 },
+  { name: 'G3', pts: [...peel('B', 0.45, [1170, 730]), [1165, 735], [1212, 800], [1196, 862], [1145, 924]], w0: 18, w1: 34 }, // ends in the base snowfield
 ]
 let gladeD = ''
 for (const gl of gladeLines) {
-  gl.c = catmull(gl.pts, 10)
+  gl.c = catmull(gl.pts, 6)
   gl.n = normals(gl.c)
   gl.w = t => lerp(gl.w0, gl.w1, t)
-  const jitter = gl.c.map(() => [r(0.32, 0.6), r(0.32, 0.6)])
+  const jitter = gl.c.map((_, i) => {
+    const t = i / (gl.c.length - 1)
+    const e = Math.min(t, 1 - t) // 0 at a junction
+    if (e < 0.14) { const k = lerp(0.62, 0.5, e / 0.14); return [k, k] }
+    return [r(0.34, 0.58), r(0.34, 0.58)]
+  })
   const L = gl.c.map((p, i) => { const w = gl.w(i / (gl.c.length - 1)) * jitter[i][0]; return [p[0] + gl.n[i][0] * w, p[1] + gl.n[i][1] * w] })
   const Rr = gl.c.map((p, i) => { const w = gl.w(i / (gl.c.length - 1)) * jitter[i][1]; return [p[0] - gl.n[i][0] * w, p[1] - gl.n[i][1] * w] })
   gladeD += poly(L) + poly(Rr.reverse()).replace('M', 'L') + 'Z'
@@ -192,7 +217,7 @@ const gladeBlobs = `<path d="${gladeD}"/>`
 const inGladeC = (x, y) => gladeLines.some(gl => { const [d, t] = distToPolyline(x, y, gl.c); return d < gl.w(t) * 0.62 })
 const inGlade = (x, y) => glades.some(([x0, x1, y0, y1]) => x > x0 && x < x1 && y > y0 && y < y1)
 const treesArr = []
-for (let i = 0; i < 9000 && treesArr.length < 975; i++) {
+for (let i = 0; i < 9000 && treesArr.length < 950; i++) {
   const x = r(-60, 1660)
   const y = r(500, 912)
   const h = Math.round(lerp(8, 24, (y - 500) / 412) * r(0.8, 1.2))
@@ -476,7 +501,7 @@ ${skierCss}
 <path d="${forestD}" fill="#0e1628" opacity=".82"/>
 <g fill="url(#runfade)" opacity=".78">${gladeBlobs}</g>
 <path d="${apronD}" fill="url(#runfade)"/><ellipse cx="760" cy="905" rx="300" ry="34" fill="url(#pool)" opacity=".7"/>
-<g fill="url(#runfade)">${runFill}</g>
+<g fill="url(#runfade)">${runFill}${pads}</g>
 <path d="${shadeD}" fill="url(#shade)"/>
 <g fill="none" stroke="#ffffff" stroke-width=".5" opacity=".25">${cord}</g>
 <g fill="url(#pool)">${pools}</g>

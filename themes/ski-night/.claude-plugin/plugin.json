@@ -1,1 +1,6 @@
-{ "name": "ski-night", "version": "0.1.0", "description": "Ski Night: a dark look with a live moonlit ski mountain behind the chat." }
+{
+  "name": "ski-night",
+  "version": "0.1.0",
+  "description": "Ski Night: a dark look with a live moonlit ski mountain behind the chat.",
+  "license": "MIT"
+}
