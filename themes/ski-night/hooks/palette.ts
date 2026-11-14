@@ -3,6 +3,7 @@ import { makeColors } from './make-colors.js'
 // Night on the mountain: moonlit navy surfaces, glacier blue, evergreen, lodge-light amber, patrol red.
 export const { theme, problems } = makeColors({
   label: 'Ski Night',
+  id: 'ski-night',
   only: 'dark',
   roles: { accent: '#4b9be0', danger: '#e04848', success: '#3fae78', warning: '#f0b04a', pro: '#9b84e6' },
   dark: {

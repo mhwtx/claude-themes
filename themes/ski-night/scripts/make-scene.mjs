@@ -69,7 +69,7 @@ const mountainD = `${poly(ridge)}L1680 1000L-60 1000Z`
 
 // forest line: dense forest below it
 const forestPts = []
-for (let x = -60; x <= 1680; x += 20) forestPts.push([x, Math.max(surfaceY(x) + 58 + r(-10, 10), 500 + r(-6, 6))])
+for (let x = -60; x <= 1680; x += 20) forestPts.push([x, Math.max(surfaceY(x) + 3, 500 + r(-8, 8))])
 const jag = []
 for (let x = -60; x <= 1680;) {
   const i = Math.max(0, Math.min(forestPts.length - 2, Math.floor((x + 60) / 20)))
