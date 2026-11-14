@@ -52,11 +52,15 @@ const distToPolyline = (x, y, pts) => {
 
 
 // ---------- the mountain: a broad, rounded ridge, forested right to the top
-const ridge = []
-for (let x = -60; x <= 1700; x += 40) {
-  const t = (x - 960) / 900
-  ridge.push([x, 288 + 380 * t * t * (x < 960 ? 1 : 0.62) + Math.sin(x / 70) * 4 + r(-3, 3)])
-}
+// a lopsided ridge: a long rise from the left, a shoulder, an off-center
+// summit, a saddle, a secondary knob, then a slow fall away to the right
+const ridgeKeys = [
+  [-60, 646], [70, 610], [190, 556], [300, 500], [390, 466], [470, 452], [540, 430],
+  [620, 392], [700, 352], [780, 326], [850, 306], [910, 296], [960, 300], [1020, 314],
+  [1080, 326], [1140, 322], [1200, 306], [1250, 304], [1310, 318], [1390, 340],
+  [1480, 364], [1580, 384], [1700, 398],
+]
+const ridge = catmull(ridgeKeys, 4).map(([x, y]) => [x, y + Math.sin(x / 43) * 4 + Math.sin(x / 17 + 1) * 2 + r(-1.5, 1.5)])
 const surfaceY = x => {
   const xx = Math.max(-60, Math.min(1699, x))
   for (let i = 0; i < ridge.length - 1; i++) {
