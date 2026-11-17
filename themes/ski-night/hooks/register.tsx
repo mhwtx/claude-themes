@@ -23,11 +23,9 @@ export const register: Register = on => {
 
     for (const look of LOOKS) {
       try {
-        const set = await $.theme.set(look)
-
-        if (!set.isDrawn) {
-          $.ui.status(set.reason)
-        }
+        // `isDrawn` is often false here only because the app attaches after
+        // session start; the theme stands and draws once it does, so say nothing.
+        await $.theme.set(look)
         lastError = undefined
         break
       } catch (error) {
