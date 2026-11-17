@@ -1,11 +1,18 @@
 {
   "name": "claude-themes",
-  "owner": { "name": "mhwtx" },
+  "owner": {
+    "name": "mhwtx"
+  },
   "plugins": [
     {
       "name": "ski-night",
       "source": "./themes/ski-night",
       "description": "A dark look with a live moonlit ski mountain behind the chat: lit groomers, tree runs, chairlifts, skiers and a little base village."
+    },
+    {
+      "name": "oled-blackout",
+      "source": "./themes/oled-blackout",
+      "description": "A pure-black dark look for OLED screens: a true #000 page, near-black cards, soft white text and vivid accents."
     }
   ]
 }

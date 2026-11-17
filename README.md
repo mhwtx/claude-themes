@@ -9,6 +9,7 @@ Themes draw in the desktop and mobile apps. The terminal and editor extensions d
 | Theme | What it looks like |
 | --- | --- |
 | [`ski-night`](themes/ski-night) | A moonlit ski hill at night: a broad forested ridge with wide runs fanning down between snowy tree strips, a tree run, two chairlifts running up the runs, skiers, and a little base village glowing at the bottom while snow falls. Dark mode, with glacier-blue accents. |
+| [`oled-blackout`](themes/oled-blackout) | Lights out: a true `#000` page so OLED pixels switch off, near-black cards a hair above it, soft white text and vivid blue, green, amber and red accents. No scene. Dark mode only. |
 
 ## Install
 
