@@ -15,11 +15,6 @@ const LOOKS = [
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    const unpainted = problems.find(line => line.startsWith("Desktop won't paint"))
-
-    if (unpainted !== undefined) {
-      $.ui.toast(unpainted)
-    }
     let lastError: unknown
 
     for (const look of LOOKS) {
@@ -32,8 +27,18 @@ export const register: Register = on => {
         lastError = undefined
         break
       } catch (error) {
+        // Some engines, such as a terminal's, have no `$.theme` at all, and
+        // terminals draw no theme anyway: stay quiet there.
+        if (error instanceof TypeError) {
+          return next(e)
+        }
         lastError = error
       }
+    }
+    const unpainted = problems.find(line => line.startsWith("Desktop won't paint"))
+
+    if (unpainted !== undefined) {
+      $.ui.toast(unpainted)
     }
     if (lastError !== undefined) {
       $.ui.toast(`Ski Night couldn't apply: ${String(lastError)}`)
