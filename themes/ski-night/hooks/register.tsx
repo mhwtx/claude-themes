@@ -4,11 +4,15 @@ import { problems, theme } from './palette'
 import { SCENE } from './scene'
 
 const NAME = 'ski-night'
-const GLASS = { blur: 18, tint: '#0d1220', opacity: 0.68 }
+// Light frost: the desktop app lays its panels over nearly the whole window,
+// so heavy glass turns the mountain into a flat navy.
+const GLASS = { blur: 4, tint: '#0d1220', opacity: 0.4 }
 
-// Engine versions name the backdrop differently: some take `backdrop.id`,
-// others `backdrop.scene`. Try one shape and fall back to the other.
+// Engine versions name the backdrop differently: current ones take
+// `backdrop.scene` and a top-level `overrideColorScheme`, older ones
+// `backdrop.id` with `colorScheme` inside. Try each shape in turn.
 const LOOKS = [
+  { colors: theme, overrideColorScheme: 'dark', backdrop: { scene: NAME, glass: GLASS } },
   { colors: theme, backdrop: { id: NAME, glass: GLASS, colorScheme: 'dark' } },
   { colors: theme, backdrop: { scene: NAME, glass: GLASS } },
 ] as unknown as ThemeSetArgs[]
